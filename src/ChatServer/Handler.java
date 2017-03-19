@@ -86,10 +86,7 @@ public class Handler implements Runnable{
 			out = new DataOutputStream(socket.getOutputStream());
 			server = Server.getInstance();
 			
-			// To do: Key exchange
-			// Remove the following line
-//			out.writeBytes(new SimpleProtocol().createMessage("welcome", "welcome") + "\n");
-
+			// Key exchange
 
 			// receive clients's key1
 			String key1str = in.readLine();
