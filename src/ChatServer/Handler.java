@@ -5,13 +5,21 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
 
-import Protocol.Protocol;
-import Protocol.SimpleProtocol;
+import Protocol.*;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 
 public class Handler implements Runnable{
 	
@@ -22,22 +30,53 @@ public class Handler implements Runnable{
 	private Server server;
 	private String username;
 	private Key key2;
+	Cipher serverCipher = null;
 	
 	public Handler(Socket socket) {
 		this.socket = socket;
 	}
 	
 	public void sendToClient(String... args){
+
+		String result = protocol.createMessage(args);
 		try {
-			out.writeBytes(protocol.createMessage(args) + "\n");
+
+			if(serverCipher == null){
+
+				serverCipher = Cipher.getInstance("AES");
+			}
+
+			serverCipher.init(Cipher.ENCRYPT_MODE, key2);
+			byte[] bytes = serverCipher.doFinal(result.getBytes());
+			String string = Base64.getEncoder().encodeToString(bytes);
+			out.writeBytes(string + "\n");
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 	
-	public String[] getFromClient() throws Exception{
-		return protocol.decodeMessage(in.readLine());
+	public String[] getFromClient() throws Exception {
+
+		if(serverCipher == null){
+
+			serverCipher = Cipher.getInstance("AES");
+		}
+
+		byte[] bytes = Base64.getDecoder().decode(in.readLine());
+		serverCipher.init(Cipher.DECRYPT_MODE, key2);
+		byte[] bytes_raw = serverCipher.doFinal(bytes);
+		return protocol.decodeMessage(new String(bytes_raw));
+
 	}
 
 	@Override
@@ -49,10 +88,36 @@ public class Handler implements Runnable{
 			
 			// To do: Key exchange
 			// Remove the following line
-			out.writeBytes(new SimpleProtocol().createMessage("welcome", "welcome") + "\n");
-			
+//			out.writeBytes(new SimpleProtocol().createMessage("welcome", "welcome") + "\n");
+
+
+			// receive clients's key1
+			String key1str = in.readLine();
+			// Transform from base64 string to byte[]
+			byte[] Key1byes = Base64.getDecoder().decode(key1str);
+			// create RSA Cipher
+			Cipher RSAcipher = Cipher.getInstance("RSA");
+			// Initialise the cipher
+			RSAcipher.init(Cipher.DECRYPT_MODE, KeyTool.getRSAPrivateKey());
+			byte[] result = RSAcipher.doFinal(Key1byes);
+			// save the received key1
+			Key key1 = new SecretKeySpec(result, "AES");
+
+
+			// Create RSA cipher
+			Cipher cipher = Cipher.getInstance("RSA");
+			cipher.init(Cipher.ENCRYPT_MODE, KeyTool.getRSAPrivateKey());
+			// send private key
+			key2 = KeyTool.getAESKey();
+			cipher = Cipher.getInstance("AES");
+			cipher.init(Cipher.ENCRYPT_MODE, key1);
+			byte[] bytes = cipher.doFinal(key2.getEncoded());
+			String string = Base64.getEncoder().encodeToString(bytes);
+			out.writeBytes(string + "\n");
+
 			// Sign in or create account
 			String[] message = getFromClient();
+
 			switch(message[0]){
 				case "sign-in":{
 						if(server.users.containsKey(message[1])){

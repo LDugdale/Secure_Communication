@@ -22,8 +22,10 @@ public class ChatClientApp extends JFrame {
 				try {
 					frame = new ChatClientApp();
 					frame.setVisible(true);
-					frame.client.setHost(args[0]);
-					frame.client.setPort(Integer.parseInt(args[1]));
+//					frame.client.setHost(args[0]);
+//					frame.client.setPort(Integer.parseInt(args[1]));
+					frame.client.setHost("localhost");
+					frame.client.setPort(54321);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
