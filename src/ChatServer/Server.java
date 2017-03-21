@@ -50,12 +50,9 @@ public class Server {
 	}
 
 	public static void main(String[] args) {
-//		Server.getInstance().host = args[0];
-//		Server.getInstance().port = Integer.parseInt(args[1]);
-//		Server.getInstance().start();
 
-		Server.getInstance().host = "localhost";
-		Server.getInstance().port = 54321;
+		Server.getInstance().host = args[0];
+		Server.getInstance().port = Integer.parseInt(args[1]);
 		Server.getInstance().start();
 	}
 
